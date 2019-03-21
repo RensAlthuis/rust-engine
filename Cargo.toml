@@ -1,0 +1,7 @@
+[package]
+name = "RustEngine"
+version = "0.1.0"
+authors = ["Rens Althuis <Rens.Althuis@gmail.com>"]
+edition = "2018"
+
+[dependencies]
