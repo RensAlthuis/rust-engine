@@ -1,14 +1,24 @@
-mod ecs;
+extern crate gfx_backend_vulkan as vulkan;
+extern crate gfx_hal as hal;
+extern crate glsl_to_spirv;
+#[macro_use] extern crate failure;
 
-use ecs::Ecs;
+mod window;
+mod renderer;
 
-#[derive(Debug)]
-struct Point {
-    x: i32,
-    y: i32,
-}
-impl ecs::Component for Point {}
+use window::Window;
+use renderer::Renderer;
+use renderer::shader;
 
 fn main() {
 
+
+    let win = Window::new("rust_engine");
+    let mut renderer = Renderer::new(win);
+
+
+    let mut running = true;
+    while running {
+        running = renderer.update();
+    }
 }

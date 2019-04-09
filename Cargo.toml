@@ -6,3 +6,8 @@ edition = "2018"
 
 [dependencies]
 typemap = "0.3.3"
+winit = "0.18.1"
+gfx-hal = "0.1.0"
+gfx-backend-vulkan = "0.1.0"
+failure = "0.1.5"
+glsl-to-spirv = "0.1.7"
