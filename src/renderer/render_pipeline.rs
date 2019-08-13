@@ -1,11 +1,13 @@
+use gfx_backend_vulkan as vulkan;
+
 use super::shader::Shader;
 use super::shader::ShaderType;
 use std::mem::ManuallyDrop;
 use std::ptr::read;
-use hal::{Device, Adapter, Backend, format , pass, image, pso};
+use gfx_hal::{Device, Backend, Primitive, format , pass, image, pso};
 use format::Format;
 use pass::{SubpassDesc};
-use image::Layout;
+use gfx_hal::image::Layout;
 use pso::{GraphicsPipelineDesc, GraphicsShaderSet};
 use failure::Error;
 use std::rc::Weak;
@@ -34,51 +36,34 @@ impl<'a> RenderPipeline<'a> {
         let render_pass =unsafe { RenderPipeline::new_render_pass(&device.upgrade().expect("RenderPipeline got non existent device"), format) }.unwrap();
         let pipeline_layout = unsafe { device.upgrade().expect("RenderPipeline got non existent device").create_pipeline_layout(&[], &[]).unwrap() };
 
-        let pipeline_desc = {
-            let vertex_buffers = Vec::new();
-            // vertex_buffers.push(
-            //     pso::VertexBufferDesc {
-            //         binding : 0,
-            //         stride : 0,
-            //         rate : 0
-            //     }
-            // )
-
-            let vertex_attributes = Vec::new();
-            let depth_stencil =  pso::DepthStencilDesc {
-                depth : pso::DepthTest::Off,
-                depth_bounds : false,
-                stencil : pso::StencilTest::Off
-            };
-
-            let baked_states = pso::BakedStates {
-                viewport : None,
-                scissor : None,
-                blend_color : None,
-                depth_bounds : None,
-            };
-
-            let subpass = hal::pass::Subpass {
+        let mut pipeline_desc = GraphicsPipelineDesc::new(
+            RenderPipeline::make_graphics_shader_set(&shaders),
+            Primitive::TriangleList,
+            pso::Rasterizer::FILL,
+            &pipeline_layout,
+            gfx_hal::pass::Subpass {
                 index : 0,
                 main_pass : &render_pass
-            };
-            GraphicsPipelineDesc {
-                shaders: RenderPipeline::make_graphics_shader_set(&shaders),
-                rasterizer : pso::Rasterizer::FILL,
-                vertex_buffers,
-                attributes : vertex_attributes,
-                input_assembler : pso::InputAssemblerDesc::new(hal::Primitive::TriangleList),
-                blender : pso::BlendDesc{logic_op : None, targets : vec![]},
-                depth_stencil,
-                multisampling : None,
-                baked_states,
-                layout : &pipeline_layout,
-                subpass,
-                flags : pso::PipelineCreationFlags::DISABLE_OPTIMIZATION,
-                parent: pso::BasePipeline::None
             }
+        );
+
+        pipeline_desc.blender.targets.push(pso::ColorBlendDesc(
+            pso::ColorMask::ALL,
+            pso::BlendState::ALPHA,
+        ));
+
+        pipeline_desc.vertex_buffers.push(pso::VertexBufferDesc {
+            binding: 0,
+            stride: 0,
+            rate: pso::VertexInputRate::Vertex,
+        });
+
+        let pipeline = unsafe {
+            let dev = device.upgrade();
+            let dev = dev.expect("RenderPipeline got non existent device");
+            let dev = dev.create_graphics_pipeline(&pipeline_desc, None).unwrap();
+            dev
         };
-        let pipeline = unsafe { device.upgrade().expect("RenderPipeline got non existent device").create_graphics_pipeline(&pipeline_desc, None).unwrap() };
 
         RenderPipeline {
             render_pass : ManuallyDrop::new(render_pass),
@@ -86,7 +71,6 @@ impl<'a> RenderPipeline<'a> {
             shaders,
             pipeline: ManuallyDrop::new(pipeline),
             device
-            // pipeline
         }
 
     }

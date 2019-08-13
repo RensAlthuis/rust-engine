@@ -1,19 +1,19 @@
 mod render_pipeline;
 pub mod shader;
 
+use gfx_backend_vulkan as vulkan;
 use super::window::Window;
 use render_pipeline::RenderPipeline;
 use std::rc::Rc;
 use std::mem::ManuallyDrop;
 use std::ptr::read;
-use hal::{
+use gfx_hal::{
 Instance, Backend, Graphics, Device, Surface, QueueGroup,
 CommandPool, Adapter, SwapchainConfig, Swapchain, SurfaceCapabilities,
-Backbuffer,
 command::{CommandBuffer, MultiShot, Primary, ClearValue, ClearColor},
 pool::{CommandPoolCreateFlags},
 format::{ChannelType, Format, Swizzle, Aspects},
-window::{FrameSync, Extent2D},
+window::{Extent2D},
 image::{ViewKind, SubresourceRange, Extent},
 pso::{Rect, PipelineStage},
 queue::Submission
@@ -65,9 +65,8 @@ impl<'a> Renderer<'a>{
             )
         }.expect("[ERROR] failed to create command pool");
 
-        let (caps, formats, _present_modes, _composite_alpha) = surface.compatibility(&adapter.physical_device);
+        let (caps, formats, _present_modes) = surface.compatibility(&adapter.physical_device);
         let format = Self::get_format(&formats);
-
         let render_pipeline = RenderPipeline::new(Rc::downgrade(&device), format);
         let (swapchain, backbuffer, number_of_images, extent) = unsafe { Self::make_swapchain(&device, &mut surface , format, &caps) };
         let (image_ready_semaphores, render_finished_semaphores, fences) = Self::make_synchronization_types(&device, number_of_images.into()).unwrap();
@@ -117,16 +116,22 @@ impl<'a> Renderer<'a>{
         }
     }
 
-    unsafe fn make_swapchain(device : &vulkan::Device, surface : &mut <vulkan::Backend as Backend>::Surface, format : Format, caps : &SurfaceCapabilities) -> (<vulkan::Backend as Backend>::Swapchain, hal::Backbuffer<vulkan::Backend>, u8, Extent2D) {
-        let config = SwapchainConfig {
-            present_mode : hal::window::PresentMode::Mailbox,
-            composite_alpha : hal::window::CompositeAlpha::Opaque,
-            format,
-            extent : caps.extents.end,
-            image_count : 3u32,
-            image_layers : 1u16,
-            image_usage : hal::image::Usage::COLOR_ATTACHMENT
-        };
+    unsafe fn make_swapchain(device : &vulkan::Device, surface : &mut <vulkan::Backend as Backend>::Surface, format : Format, caps : &SurfaceCapabilities)
+        -> (<vulkan::Backend as Backend>::Swapchain,
+            Vec<<vulkan::Backend as Backend>::Image>,
+            u8,
+            Extent2D)
+        {
+        let config = SwapchainConfig::from_caps(caps, format, Extent2D {width:1024, height:768});
+        // let config = SwapchainConfig {
+        //     present_mode : gfx_hal::window::PresentMode::Mailbox,
+        //     composite_alpha : gfx_hal::window::CompositeAlpha::Opaque,
+        //     format,
+        //     extent : caps.extents.end,
+        //     image_count : 3u32,
+        //     image_layers : 1u16,
+        //     image_usage : gfx_hal::image::Usage::COLOR_ATTACHMENT
+        // };
 
         let (swapchain, backbuffer) = device.create_swapchain(surface, config, None).unwrap();
         (swapchain, backbuffer, 3, caps.extents.end)
@@ -144,28 +149,23 @@ impl<'a> Renderer<'a>{
         Ok((image_ready_semaphores, render_finished_semaphores, fences))
     }
 
-    unsafe fn make_image_views(device : &vulkan::Device, backbuffer : &Backbuffer<vulkan::Backend>, format : Format) -> Result<Vec<<vulkan::Backend as Backend>::ImageView>, Error> {
-        match backbuffer {
-            Backbuffer::Images(images) => {
-                Ok(images.into_iter()
-                      .map(| image | {
-                          device.create_image_view(
-                              &image,
-                              ViewKind::D2,
-                              format,
-                              Swizzle::NO,
-                              SubresourceRange {
-                                  aspects: Aspects::COLOR,
-                                  levels: 0..1,
-                                  layers: 0..1
-                              }
-                          )
-                      })
-                      .collect::<Result<Vec<_>, hal::image::ViewError>>()?
-                )
-            },
-            Backbuffer::Framebuffer(_) => Err(failure::err_msg("No Backbuffer Frambuffers"))
-        }
+    unsafe fn make_image_views(device : &vulkan::Device, backbuffer : &Vec<<vulkan::Backend as Backend>::Image>, format : Format) -> Result<Vec<<vulkan::Backend as Backend>::ImageView>, Error> {
+        Ok(backbuffer.into_iter()
+                .map(| image | {
+                    device.create_image_view(
+                        &image,
+                        ViewKind::D2,
+                        format,
+                        Swizzle::NO,
+                        SubresourceRange {
+                            aspects: Aspects::COLOR,
+                            levels: 0..1,
+                            layers: 0..1
+                        }
+                    )
+                })
+                .collect::<Result<Vec<_>, gfx_hal::image::ViewError>>()?
+        )
     }
 
     unsafe fn make_framebuffers(device : &vulkan::Device, image_views : &Vec<<vulkan::Backend as Backend>::ImageView>, render_pass : &<vulkan::Backend as Backend>::RenderPass, extent : &Extent) -> Result<Vec<<vulkan::Backend as Backend>::Framebuffer>, Error> {
@@ -181,7 +181,7 @@ impl<'a> Renderer<'a>{
                         depth: 1,
                     },
                 )
-        }).collect::<Result<Vec<_>, hal::device::OutOfMemory>>()?
+        }).collect::<Result<Vec<_>, gfx_hal::device::OutOfMemory>>()?
         )
     }
 
@@ -192,9 +192,11 @@ impl<'a> Renderer<'a>{
 
         let i_usize = unsafe {
             let image_index = self.swapchain
-                .acquire_image(core::u64::MAX, FrameSync::Semaphore(image_available))
+                .acquire_image(!0, Some(image_available), None)
                 .map_err(|_| failure::err_msg("Couldn't acquire an image from the swapchain!"))?;
-            image_index as usize
+            match image_index {
+                (i, _) => i as usize
+            }
         };
 
         let fence = &self.fences[i_usize];

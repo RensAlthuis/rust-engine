@@ -1,30 +1,40 @@
-extern crate gfx_backend_vulkan as vulkan;
-extern crate gfx_hal as hal;
-extern crate glsl_to_spirv;
-#[macro_use] extern crate failure;
+#![allow(dead_code)]
 
+#[macro_use] extern crate failure_derive;
+
+mod ecs;
+mod handle_index;
 mod window;
 mod renderer;
 
+
+use ecs::Ecs;
 use window::Window;
 use renderer::Renderer;
 
+#[derive(Debug)]
+struct Point {
+    x: i32,
+    y: i32,
+}
+impl ecs::Component for Point {}
+
 fn main() {
+    let mut s = Ecs::new();
+    let entity = s.create_entity();
+    let point = Point{x:1, y:2};
+    let ok = s.add_comp(&entity, point);
+    println!("{}", ok);
+    let ok = s.add_comp(&entity, Point { x: 3, y: 8 });
+    println!("{}", ok);
 
+    let p = s.get_comp::<Point>(&entity).unwrap();
+    println!("{:?}", p);
 
-    let mut win = Window::new("rust_engine");
-    let mut renderer = Renderer::new(&win);
+    let mut w = Window::new("window");
+    let mut r = Renderer::new(&w);
+    while w.poll_events() {
+        r.draw_clear_colour([1.0,0.0,0.0,1.0]).expect("clear colour failed");
+    }
 
-    let mut running = true;
-    let mut delta = 0.01;
-    let r : f32 = 0.0;
-    let g : f32 = 51.0;
-    let mut b : f32 = 102.0;
-    let a : f32 = 0.0;
-    while running {
-        running = win.poll_events();
-        // b += delta;
-        // if b >= 255.0 || b <= 0.0 { delta = -delta};
-        renderer.draw_clear_colour([r/255.0, g/255.0, b/255.0, a]).unwrap();
-    };
 }

@@ -1,8 +1,11 @@
+extern crate failure;
+
+use gfx_backend_vulkan as vulkan;
 use std::fs;
 use std::mem::ManuallyDrop;
 use std::ptr::read;
 use std::io::Read;
-use hal::{Backend, Device, pso};
+use gfx_hal::{Backend, Device, pso};
 use pso::EntryPoint;
 use failure::Error;
 use std::rc::Weak;
@@ -49,7 +52,7 @@ impl<'a> Shader<'a> {
         EntryPoint {
             entry: self.entry,
             module : &self.module,
-            specialization : self.specialization
+            specialization : self.specialization.clone()
         }
     }
 
