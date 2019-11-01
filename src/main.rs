@@ -1,40 +1,57 @@
 #![allow(dead_code)]
+#![allow(unused_imports)]
+// use std::ops::Drop;
+// use std::os::raw::{c_char, c_void};
+// mod ecs;
+// mod handle_index;
+// use ecs::Ecs;
 
-#[macro_use] extern crate failure_derive;
+// #[derive(Debug)]
+// struct Point {
+//     x: i32,
+//     y: i32,
+// }
+// impl ecs::Component for Point {}
 
-mod ecs;
-mod handle_index;
+// let mut s = Ecs::new();
+// let entity = s.create_entity();
+// let point = Point{x:1, y:2};
+// let ok = s.add_comp(&entity, point);
+// println!("{}", ok);
+// let ok = s.add_comp(&entity, Point { x: 3, y: 8 });
+// println!("{}", ok);
+
+// let p = s.get_comp::<Point>(&entity).unwrap();
+// println!("{:?}", p);
+
+#[macro_use] extern crate ash;
+extern crate winit;
+
 mod window;
-mod renderer;
+mod vulkan_state;
+mod shader;
+mod render_pipeline;
 
-
-use ecs::Ecs;
 use window::Window;
-use renderer::Renderer;
+use vulkan_state::VulkanState;
+use shader::Shader;
 
-#[derive(Debug)]
-struct Point {
-    x: i32,
-    y: i32,
-}
-impl ecs::Component for Point {}
+use ash::vk;
+use std::ffi::CString;
 
 fn main() {
-    let mut s = Ecs::new();
-    let entity = s.create_entity();
-    let point = Point{x:1, y:2};
-    let ok = s.add_comp(&entity, point);
-    println!("{}", ok);
-    let ok = s.add_comp(&entity, Point { x: 3, y: 8 });
-    println!("{}", ok);
 
-    let p = s.get_comp::<Point>(&entity).unwrap();
-    println!("{:?}", p);
+    let w = Window::new("window");
+    let vk_state = VulkanState::new(&w);
+    let vertex_shader = Shader::new("assets/vert.spv", shader::Type::Vertex, &vk_state.device);
+    let fragment_shader = Shader::new("assets/frag.spv", shader::Type::Fragment, &vk_state.device);
 
-    let mut w = Window::new("window");
-    let mut r = Renderer::new(&w);
-    while w.poll_events() {
-        r.draw_clear_colour([1.0,0.0,0.0,1.0]).expect("clear colour failed");
-    }
 
+
+
+
+
+    println!("Program End");
+    // while w.poll_events() {
+    // }
 }

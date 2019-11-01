@@ -2,10 +2,12 @@
 extern crate winit;
 
 use winit::{EventsLoop, Event, WindowEvent};
+use winit::dpi::LogicalSize;
 
 pub struct Window {
     pub window : winit::Window,
     events_loop : EventsLoop,
+    pub extent : LogicalSize
 }
 
 impl Window {
@@ -16,20 +18,26 @@ impl Window {
             .build(&events_loop)
             .expect("Could not create window");
         ;
+
+        let extent = window.get_inner_size().unwrap();
+
         Window {
             window,
             events_loop,
+            extent,
         }
     }
 
     pub fn poll_events(&mut self) -> bool {
         let mut running = true;
+        let mut e = self.extent;
         self.events_loop.poll_events(| event | {
             match event {
                 Event::WindowEvent { event:win_event , ..} => {
                     match win_event {
-                        WindowEvent::Resized(winit::dpi::LogicalSize{width, height}) => {
-                            println!("[INFO] Resize {}, {}", width, height);
+                        WindowEvent::Resized(extent) => {
+                            println!("[INFO] Resize {}, {}", extent.width, extent.height);
+                            e = extent;
                         },
 
                         WindowEvent::CloseRequested => {
