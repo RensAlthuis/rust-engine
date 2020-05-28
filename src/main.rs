@@ -35,23 +35,20 @@ mod render_pipeline;
 use window::Window;
 use vulkan_state::VulkanState;
 use shader::Shader;
-
-use ash::vk;
-use std::ffi::CString;
+use render_pipeline::RenderPipeline;
+use ash::vk::Extent2D;
 
 fn main() {
 
-    let w = Window::new("window");
+
+    let mut w = Window::new("window");
     let vk_state = VulkanState::new(&w);
     let vertex_shader = Shader::new("assets/vert.spv", shader::Type::Vertex, &vk_state.device);
     let fragment_shader = Shader::new("assets/frag.spv", shader::Type::Fragment, &vk_state.device);
-
-
-
-
+    let rp = RenderPipeline::new("hi", &[vertex_shader, fragment_shader], &vk_state.device, ash::vk::Extent2D{width:w.extent.width, height:w.extent.height});
 
 
     println!("Program End");
-    // while w.poll_events() {
-    // }
+    w.run(|| {
+    });
 }

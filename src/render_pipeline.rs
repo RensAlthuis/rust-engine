@@ -3,7 +3,7 @@ use ash::vk;
 use ash::version::DeviceV1_0;
 use std::ffi::CString;
 
-struct RenderPipeline<'d, D : DeviceV1_0> {
+pub struct RenderPipeline<'d, D : DeviceV1_0> {
     shaders : &'d[Shader<'d, D>]
 }
 
@@ -55,6 +55,7 @@ impl<'d, D : DeviceV1_0> RenderPipeline<'d, D> {
             .depth_clamp_enable(false);
 
 
+        // let graphics_pipeline_create_info = vk::GraphicsPipelineCreateInfo::builder()
         // let pipeline =device.create_graphics_pipelines(pipeline_cache: vk::PipelineCache, create_infos: &[vk::GraphicsPipelineCreateInfo], Option::None);
 
         RenderPipeline{

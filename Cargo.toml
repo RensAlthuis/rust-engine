@@ -5,4 +5,15 @@ authors = ["Rens Althuis <Rens.Althuis@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-libc = ">=0.2"
+# typemap = "0.3.3"
+winit = "0.22.2"
+# gfx-hal = "0.5.0"
+# gfx-backend-vulkan = "0.5.6"
+# failure = "0.1.8"
+# failure_derive = "0.1.8"
+# glsl-to-spirv = "0.1.7"
+# arrayvec = "0.5.1"
+# image = "0.23.4"
+# log = "0.4.8"
+# env_logger = "0.7.1"
+ash = "0.31.0"

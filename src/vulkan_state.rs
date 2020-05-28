@@ -17,7 +17,7 @@ fn create_instance(entry : &Entry ) -> Result<Instance, ash::InstanceError> {
         .engine_name(&app_name)
         .application_version(0)
         .engine_version(0)
-        .api_version(vk_make_version!(1,1,0));
+        .api_version(vk::make_version(1,1,0));
 
     let layer_names = [CString::new("VK_LAYER_LUNARG_standard_validation").unwrap()];
     let layer_names_raw : Vec<*const c_char> = {
@@ -72,12 +72,12 @@ fn create_debug(loader : &DebugReport) -> ash::prelude::VkResult<vk::DebugReport
 fn create_surface<E: EntryV1_0, I: InstanceV1_0>(
     entry: &E,
     instance: &I,
-    window: &winit::Window
+    window: &winit::window::Window
 ) -> Result<vk::SurfaceKHR, vk::Result> {
 
-    use winit::os::unix::WindowExt;
-    let display = window.get_xlib_display().unwrap();
-    let window = window.get_xlib_window().unwrap();
+    use winit::platform::unix::WindowExtUnix;
+    let display = WindowExtUnix::xlib_display(window).unwrap();
+    let window = WindowExtUnix::xlib_window(window).unwrap();
 
     let create_info = vk::XlibSurfaceCreateInfoKHR::builder()
         .window(window)
@@ -95,7 +95,7 @@ fn get_pdevice(instance : &Instance, surface_loader : &Surface , surface : &vk::
             .iter().enumerate()
             .filter_map(|(index, ref info)| {
                 let support = info.queue_flags.contains(vk::QueueFlags::GRAPHICS) &&
-                            surface_loader.get_physical_device_surface_support(*pdevice, index as u32, *surface);
+                            surface_loader.get_physical_device_surface_support(*pdevice, index as u32, *surface).unwrap();
                 match support {
                     true => Option::Some((*pdevice, index as u32)),
                     false => Option::None
@@ -231,9 +231,9 @@ impl VulkanState
         let instance = create_instance(&entry).expect("instance creation failed");
         match entry.try_enumerate_instance_version().unwrap() {
             Option::Some(version) => {
-                let major = vk_version_major!(version);
-                let minor = vk_version_minor!(version);
-                let patch = vk_version_patch!(version);
+                let major = vk::version_major(version);
+                let minor = vk::version_minor(version);
+                let patch = vk::version_patch(version);
                 println!("Using vulkan api: v{}_{}_{}", major, minor, patch);
             },
             Option::None => {println!("Using vulkan api: v1_0_0");}

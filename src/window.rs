@@ -1,26 +1,27 @@
 
 extern crate winit;
 
-use winit::{EventsLoop, Event, WindowEvent};
-use winit::dpi::LogicalSize;
+use winit::event::{Event, WindowEvent};
+use winit::event_loop::{ControlFlow, EventLoop, EventLoopProxy};
+use winit::dpi::PhysicalSize;
+use winit::window::WindowBuilder;
 
 pub struct Window {
-    pub window : winit::Window,
-    events_loop : EventsLoop,
-    pub extent : LogicalSize
+    pub window : winit::window::Window,
+    events_loop : Option<EventLoop<()>>,
+    pub extent : PhysicalSize<u32>
 }
 
 impl Window {
     pub fn new(title : &str) -> Window {
-        let events_loop = winit::EventsLoop::new();
-        let window = winit::WindowBuilder::new()
+        let events_loop = EventLoop::new();
+        let window = WindowBuilder::new()
             .with_title(title)
             .build(&events_loop)
             .expect("Could not create window");
-        ;
 
-        let extent = window.get_inner_size().unwrap();
-
+        let extent = window.inner_size();
+        let events_loop = Some(events_loop);
         Window {
             window,
             events_loop,
@@ -28,31 +29,36 @@ impl Window {
         }
     }
 
-    pub fn poll_events(&mut self) -> bool {
-        let mut running = true;
+    pub fn run<F>(&mut self, main_loop : F )
+    where F: 'static + Fn() {
         let mut e = self.extent;
-        self.events_loop.poll_events(| event | {
-            match event {
-                Event::WindowEvent { event:win_event , ..} => {
-                    match win_event {
-                        WindowEvent::Resized(extent) => {
-                            println!("[INFO] Resize {}, {}", extent.width, extent.height);
-                            e = extent;
-                        },
+        if let Some(events_loop) = self.events_loop.take() {
 
-                        WindowEvent::CloseRequested => {
-                            running = false;
-                        },
+            events_loop.run(move | event, _, control_flow| {
+                *control_flow = ControlFlow::Wait;
+                match event {
+                    Event::WindowEvent { event:win_event , ..} => {
+                        match win_event {
+                            WindowEvent::Resized(extent) => {
+                                println!("[INFO] Resize {}, {}", extent.width, extent.height);
+                                e = extent;
+                            },
 
-                        _ => ()
-                    }
-                },
+                            WindowEvent::CloseRequested => {
+                                *control_flow = ControlFlow::Exit;
+                            },
 
-                _ => ()
-            }
-        });
+                            _ => ()
+                        }
+                    },
 
-        running
+                    _ => ()
+                }
+                main_loop();
+            });
+
+        };
+
     }
 
 }
